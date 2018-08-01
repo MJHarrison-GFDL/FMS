@@ -241,7 +241,7 @@ module time_interp_external_mod
       integer :: form, thread, fset, unit,ndim,nvar,natt,ntime,i,j
       integer :: iscomp,iecomp,jscomp,jecomp,isglobal,ieglobal,jsglobal,jeglobal
       integer :: isdata,iedata,jsdata,jedata, dxsize, dysize,dxsize_max,dysize_max
-      logical :: verb, transpose_xy,use_comp_domain1
+      logical :: verb, transpose_xy,use_comp_domain1, permit_calendar_conversion_
       real, dimension(:), allocatable :: tstamp, tstart, tend, tavg
       character(len=1) :: cart
       character(len=1), dimension(4) :: cart_dir
@@ -516,11 +516,13 @@ module time_interp_external_mod
          call mpp_get_atts(time_axis,units=units,calendar=calendar_type)
          field(num_fields)%time_units=units
          field(num_fields)%calendar_type=calendar_type
-         field(num_fields)%permit_calendar_conversion=permit_calendar_conversion
+         permit_calendar_conversion_=.true.
+         if (PRESENT(permit_calendar_conversion)) permit_calendar_conversion_=permit_calendar_conversion
+         field(num_fields)%permit_calendar_conversion=permit_calendar_conversion_
          do j=1,ntime
-            field(num_fields)%time(j)       = get_cal_time(tstamp(j),trim(units),trim(calendar_type),permit_calendar_conversion)
-            field(num_fields)%start_time(j) = get_cal_time(tstart(j),trim(units),trim(calendar_type),permit_calendar_conversion)
-            field(num_fields)%end_time(j)   = get_cal_time(  tend(j),trim(units),trim(calendar_type),permit_calendar_conversion)
+            field(num_fields)%time(j)       = get_cal_time(tstamp(j),trim(units),trim(calendar_type),permit_calendar_conversion_)
+            field(num_fields)%start_time(j) = get_cal_time(tstart(j),trim(units),trim(calendar_type),permit_calendar_conversion_)
+            field(num_fields)%end_time(j)   = get_cal_time(  tend(j),trim(units),trim(calendar_type),permit_calendar_conversion_)
          enddo
 
          if (field(num_fields)%modulo_time) then
@@ -1614,14 +1616,3 @@ stop
 
 end program test_time_interp_ext
 #endif
-
-
-
-
-
-
-
-
-
-
-

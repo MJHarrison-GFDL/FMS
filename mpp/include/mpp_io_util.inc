@@ -341,10 +341,15 @@
 
       ntime = mpp_file(unit)%time_level
 
-      do i=1,ntime
-         time_values(i) = mpp_file(unit)%time_values(i)
-      enddo
-
+      if (ASSOCIATED(mpp_file(unit)%time_values)) then
+        do i=1,ntime
+          time_values(i) = mpp_file(unit)%time_values(i)
+        enddo
+      else
+          do i=1,ntime
+            time_values(i)=mpp_file(unit)%first_time_record + (i-1)*mpp_file(unit)%delta_time
+          enddo
+      endif
       return
     end subroutine mpp_get_times
 

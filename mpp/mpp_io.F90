@@ -386,7 +386,7 @@ private
   !--- public interface from mpp_io_read.h ---------------------
   public :: mpp_read, mpp_read_meta, mpp_get_tavg_info
   public :: mpp_read_compressed, mpp_write_compressed, mpp_read_distributed_ascii, mpp_write_unlimited_axis
-
+  public :: mpp_get_time_value
   !--- public interface from mpp_io_switch.h ---------------------
   public :: mpp_open, mpp_close
 
@@ -460,9 +460,13 @@ type :: atttype
      logical            :: io_domain_exist    ! indicate if io_domain exist or not.
      integer            :: id       !variable ID of time axis associated with file (only one time axis per file)
      integer            :: recdimid !dim ID of time axis associated with file (only one time axis per file)
+     integer            :: recvid   ! variable ID of time axis
+
      real(DOUBLE_KIND), pointer :: time_values(:) =>NULL() ! time axis values are stored here instead of axis%data
-                                                  ! since mpp_write assumes these values are not time values.
-                                                  ! Not used in mpp_write
+      ! since mpp_write assumes these values are not time values.
+      ! Not used in mpp_write
+     real(DOUBLE_KIND) :: first_time_record, last_time_record, delta_time ! first and last time values and estimated
+      ! time interval used for files with a large number of records (for performance)
      ! additional elements of filetype for mpp_read (ignored for mpp_write)
      integer :: ndim, nvar, natt  ! number of dimensions, non-dimension variables and global attributes
                                   ! redundant axis types stored here and in associated fieldtype

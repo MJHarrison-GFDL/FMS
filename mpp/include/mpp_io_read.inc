@@ -1,5 +1,4 @@
 ! -*-f90-*-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                                                                      !
 !                               MPP_READ                               !
@@ -474,6 +473,11 @@
       real(FLOAT_KIND), allocatable  :: rvals(:)
       real(DOUBLE_KIND), allocatable :: r8vals(:)
 
+      real(FLOAT_KIND) :: rv
+      real(DOUBLE_KIND) :: r8v
+
+      integer, parameter :: max_records_read = 12
+
       get_time_info = .TRUE.
       if(present(read_time)) get_time_info = read_time
 
@@ -721,8 +725,9 @@
                     call mpp_error( FATAL, 'Invalid data type for dimension' )
                  end select
              else if(get_time_info) then
+                 mpp_file(unit)%recvid = i
                  len = mpp_file(unit)%time_level
-                 if( len > 0 ) then
+                 if( len > 0 .and. len <= max_records_read ) then
                     allocate(mpp_file(unit)%time_values(len), STAT=istat)
                     if ( istat .ne. 0 ) then
                        write(text,'(A)') istat
@@ -764,7 +769,39 @@
                        deallocate(r8vals)
                     case default
                        call mpp_error( FATAL, 'Invalid data type for dimension' )
+                   end select
+                 else if (len > 0) then
+                    select case (type)
+                    case (NF_FLOAT)
+                        if(mpp_pe()==mpp_root_pe()) then
+                          error = NF_GET_VAR1_REAL(ncid,i,1, rv)
+                          call netcdf_err( error, mpp_file(unit), mpp_file(unit)%Axis(dimid) )
+                          mpp_file(unit)%first_time_record = rv
+                          error = NF_GET_VAR1_REAL(ncid,i,len, rv)
+                          call netcdf_err( error, mpp_file(unit), mpp_file(unit)%Axis(dimid) )
+                          mpp_file(unit)%last_time_record = rv
+                          mpp_file(unit)%delta_time = ( mpp_file(unit)%last_time_record - mpp_file(unit)%first_time_record) / real(len)
+                       endif
+                       call mpp_broadcast(mpp_file(unit)%first_time_record, mpp_root_pe())
+                       call mpp_broadcast(mpp_file(unit)%last_time_record, mpp_root_pe())
+                       call mpp_broadcast(mpp_file(unit)%delta_time, mpp_root_pe())
+                    case (NF_DOUBLE)
+                        if(mpp_pe()==mpp_root_pe()) then
+                          error = NF_GET_VAR1_DOUBLE(ncid,i,1, r8v)
+                          call netcdf_err( error, mpp_file(unit), mpp_file(unit)%Axis(dimid) )
+                          mpp_file(unit)%first_time_record = r8v
+                          error = NF_GET_VAR1_DOUBLE(ncid,i,len, r8v)
+                          call netcdf_err( error, mpp_file(unit), mpp_file(unit)%Axis(dimid) )
+                          mpp_file(unit)%last_time_record = r8v
+                          mpp_file(unit)%delta_time = ( mpp_file(unit)%last_time_record - mpp_file(unit)%first_time_record) / real(len)
+                       endif
+                       call mpp_broadcast(mpp_file(unit)%first_time_record, mpp_root_pe())
+                       call mpp_broadcast(mpp_file(unit)%last_time_record, mpp_root_pe())
+                       call mpp_broadcast(mpp_file(unit)%delta_time, mpp_root_pe())
+                    case default
+                       call mpp_error( FATAL, 'Invalid data type for dimension' )
                     end select
+
                  endif
               endif
               ! assign dimension atts
@@ -1063,7 +1100,7 @@
 
               do j=1,nvdims
                  if(dimids(j).eq.mpp_file(unit)%recdimid  .and. mpp_file(unit)%time_level/=-1)then
-                    mpp_file(unit)%Var(nv)%time_axis_index = j   !dimids(j). z1l: Should be j. 
+                    mpp_file(unit)%Var(nv)%time_axis_index = j   !dimids(j). z1l: Should be j.
                                                                  !This will cause problem when appending to existed file.
                     mpp_file(unit)%Var(nv)%size(j)=1    ! dimid length set to 1 here for consistency w/ mpp_write
                  else
@@ -1240,6 +1277,38 @@
     end function cut0
 
 
+    function mpp_get_time_value(unit, index)
+      implicit none
+      integer :: unit
+      integer :: index
+      real    :: mpp_get_time_value
+      real(FLOAT_KIND) :: rv
+      real(DOUBLE_KIND) :: r8v
+      integer :: type
+      integer :: id, error, ncid
+
+      id = mpp_file(unit)%recvid
+      ncid = mpp_file(unit)%ncid
+      type = mpp_file(unit)%Att(mpp_file(unit)%recdimid)%type
+      select case (type)
+        case (NF_FLOAT)
+            if(mpp_pe()==mpp_root_pe()) then
+                error = NF_GET_VAR1_REAL(ncid,id,index,rv)
+                call netcdf_err( error, mpp_file(unit) )
+            endif
+            call mpp_broadcast(rv, mpp_root_pe())
+            mpp_get_time_value = rv
+        case (NF_DOUBLE)
+            if(mpp_pe()==mpp_root_pe()) then
+                error = NF_GET_VAR1_DOUBLE(ncid,id,index,r8v)
+                call netcdf_err( error, mpp_file(unit) )
+            endif
+            call mpp_broadcast(r8v, mpp_root_pe())
+            mpp_get_time_value = r8v
+        end select
+
+    end function mpp_get_time_value
+
     subroutine mpp_get_tavg_info(unit, field, fields, tstamp, tstart, tend, tavg)
       implicit none
       integer, intent(in) :: unit
@@ -1281,23 +1350,41 @@
 #endif
       if (tavg_info_exists) then
           do n = 1, size(fields(:))
-             if (trim(fields(n)%name) == 'average_T1') then
-                 do m = 1, size(tstart(:))
+            if (trim(fields(n)%name) == 'average_T1') then
+                if (ASSOCIATED(mpp_file(unit)%time_values)) then
+                  do m = 1, size(tstart(:))
                     call mpp_read(unit, fields(n),t_default_real, m)
                     tstart(m) = t_default_real
-                 enddo
+                  enddo
+                else
+                    do m= 1, size(tstart)
+                      tstart(m) = tstart(m) - 0.5*mpp_file(unit)%delta_time
+                    enddo
+                endif
              endif
              if (trim(fields(n)%name) == 'average_T2') then
-                 do m = 1, size(tend(:))
-                    call mpp_read(unit, fields(n),t_default_real, m)
-                    tend(m) = t_default_real
-                 enddo
+                if (ASSOCIATED(mpp_file(unit)%time_values)) then
+                    do m = 1, size(tend(:))
+                      call mpp_read(unit, fields(n),t_default_real, m)
+                      tend(m) = t_default_real
+                    enddo
+                else
+                    do m= 1, size(tstart)
+                      tend(m) = tend(m) + 0.5*mpp_file(unit)%delta_time
+                    enddo
+                endif
              endif
              if (trim(fields(n)%name) == 'average_DT') then
-                 do m = 1, size(tavg(:))
-                    call mpp_read(unit, fields(n),t_default_real, m)
-                    tavg(m) = t_default_real
-                 enddo
+                if (ASSOCIATED(mpp_file(unit)%time_values)) then
+                    do m = 1, size(tavg(:))
+                      call mpp_read(unit, fields(n),t_default_real, m)
+                      tavg(m) = t_default_real
+                    enddo
+                else
+                    do m= 1, size(tstart)
+                      tavg(m) = tend(m)-tstart(m)
+                    enddo
+                endif
              endif
           enddo
 

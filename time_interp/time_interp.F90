@@ -53,7 +53,7 @@ public :: time_interp_init, time_interp, fraction_of_year
 !   <OVERVIEW>
 !      Returns a weight and dates or indices for interpolating between two dates. The
 !      interface fraction_of_year is provided for backward compatibility with the
-!      previous version. 
+!      previous version.
 !   </OVERVIEW>
 !   <DESCRIPTION>
 !      Returns weight by interpolating Time between Time1 and Time2.
@@ -83,7 +83,7 @@ public :: time_interp_init, time_interp, fraction_of_year
 !      Period = Time_end-Time_beg
 !      N is between (Time-Time_end)/Period and (Time-Time_beg)/Period
 !      That is, N is the integer that results in Time_adjusted that is between Time_beg and Time_end.
-!      
+!
 !   </DESCRIPTION>
 !   <TEMPLATE>
 !     1. call time_interp( Time, weight )
@@ -150,12 +150,12 @@ public :: time_interp_init, time_interp, fraction_of_year
 !   <ERROR MSG="modulo months must have same length" STATUS="ERROR">
 !     The length of the current month for input Time and Time_list
 !     must be the same when using the modulo month option. The
-!     modulo month option is available but not supported. 
+!     modulo month option is available but not supported.
 !   </ERROR>
 !   <ERROR MSG="invalid value for argument modtime" STATUS="ERROR">
 !     The optional argument modtime must have a value set by one
 !     of the public parameters: NONE, YEAR, MONTH, DAY. The
-!     MONTH and DAY options are available but not supported. 
+!     MONTH and DAY options are available but not supported.
 !   </ERROR>
 !   <ERROR MSG="period of list exceeds modulo period" STATUS="ERROR">
 !     The difference between the last and first values in the input
@@ -165,13 +165,13 @@ public :: time_interp_init, time_interp, fraction_of_year
 !     The difference between the last and first values in the input
 !     These errors occur when you are not using a modulo axis and
 !     the input Time occurs before the first value in the Time
-!     list/array or after the last value in the Time list/array. 
+!     list/array or after the last value in the Time list/array.
 !   </ERROR>
 !   <NOTE>
-!     Examples: 
+!     Examples:
 !     <PRE>
-!       Time: Jan 01 00z    weight = 0.0 
-!       Time: Jul 01        weight ~ 0.5 
+!       Time: Jan 01 00z    weight = 0.0
+!       Time: Jul 01        weight ~ 0.5
 !       Time: Dec 31 23z    weight ~ 1.0
 !     </PRE>
 !   </NOTE>
@@ -244,7 +244,7 @@ contains
 
  subroutine time_interp_frac ( Time, weight )
 
-   type(time_type), intent(in)  :: Time 
+   type(time_type), intent(in)  :: Time
    real           , intent(out) :: weight
 
    integer         :: year, month, day, hour, minute, second
@@ -255,9 +255,9 @@ contains
 
 !  ---- compute fractional time of year -----
 
-     call get_date (Time, year, month, day, hour, minute, second) 
+     call get_date (Time, year, month, day, hour, minute, second)
 
-     Year_beg = set_date(year  , 1, 1) 
+     Year_beg = set_date(year  , 1, 1)
      Year_end = set_date(year+1, 1, 1)
 
      weight = (Time - Year_beg) // (Year_end - Year_beg)
@@ -456,13 +456,13 @@ real           , intent(out) :: weight
 integer        , intent(out) :: index1, index2
 logical, intent(in), optional :: correct_leap_year_inconsistency
 character(len=*), intent(out), optional :: err_msg
-  
+
   type(time_type) :: Period, T
   integer :: is, ie,i1,i2
   integer :: ys,ms,ds,hs,mins,ss ! components of the starting date
   integer :: ye,me,de,he,mine,se ! components of the ending date
   integer :: yt,mt,dt,ht,mint,st ! components of the current date
-  integer :: dt1                 ! temporary value for day 
+  integer :: dt1                 ! temporary value for day
   integer :: n                   ! size of Timelist
   integer :: stdoutunit
   logical :: correct_lyr, calendar_has_leap_years, do_the_lyr_correction
@@ -472,14 +472,14 @@ character(len=*), intent(out), optional :: err_msg
 
   stdoutunit = stdout()
   n = size(Timelist)
-  
+
   if (Time_beg>=Time_end) then
      if(fms_error_handler('time_interp_modulo', &
      'end of the specified time loop interval must be later than its beginning',err_msg)) return
   endif
 
   calendar_has_leap_years = (get_calendar_type() == JULIAN .or. get_calendar_type() == GREGORIAN)
-  
+
   Period = Time_end-Time_beg ! period of the time axis
 
   if(present(correct_leap_year_inconsistency)) then
@@ -487,7 +487,7 @@ character(len=*), intent(out), optional :: err_msg
   else
     correct_lyr = .false.
   endif
-  
+
   ! bring the requested time inside the specified time period
   T = Time
 
@@ -517,7 +517,7 @@ character(len=*), intent(out), optional :: err_msg
      if(mt==2.and.dt==29.and..not.leap_year(set_date(yt,1,1))) dt1=28
      T = set_date(yt,mt,dt1,ht,mint,st)
      if (T < Time_beg) then
-       ! the requested time is within the first year, 
+       ! the requested time is within the first year,
        ! but before the starting date. So we shift it to the last year.
        if(mt==2.and.dt==29.and..not.leap_year(set_date(ye,1,1))) dt=28
        T = set_date(ye,mt,dt,ht,mint,st)
@@ -530,8 +530,8 @@ character(len=*), intent(out), optional :: err_msg
         T = T+Period
      enddo
   endif
-  
-  ! find indices of the first and last records in the Timelist that are within 
+
+  ! find indices of the first and last records in the Timelist that are within
   ! the requested time period.
   if (Time_end<=Timelist(1).or.Time_beg>=Timelist(n)) then
      if(get_calendar_type() == NO_CALENDAR) then
@@ -549,7 +549,7 @@ character(len=*), intent(out), optional :: err_msg
      if(fms_error_handler('time_interp_modulo', &
      'the entire time list is outside the specified time loop interval',err_msg)) return
   endif
-  
+
   call bisect(Timelist,Time_beg,index1=i1,index2=i2)
   if (i1 < 1) then
      is = 1 ! Time_beg before lower boundary
@@ -590,7 +590,7 @@ character(len=*), intent(out), optional :: err_msg
      if(fms_error_handler('time_interp_modulo', &
      'error in calculation of time list bounds within the specified time loop interval',err_msg)) return
   endif
-  
+
   ! handle special cases:
   if( T>=Timelist(ie) ) then
      ! time is after the end of the portion of the time list within the requested period
@@ -611,7 +611,7 @@ end subroutine time_interp_modulo
 ! given an array of times in ascending order and a specific time returns
 ! values of index1 and index2 such that the Timelist(index1)<=Time and
 ! Time<=Timelist(index2), and index2=index1+1
-! index1=0, index2=1 or index=n, index2=n+1 are returned to indicate that 
+! index1=0, index2=1 or index=n, index2=n+1 are returned to indicate that
 ! the time is out of range
 subroutine bisect(Timelist,Time,index1,index2)
   type(time_type)  , intent(in)  :: Timelist(:)
@@ -621,7 +621,7 @@ subroutine bisect(Timelist,Time,index1,index2)
   integer :: i,il,iu,n,i1,i2
 
   n = size(Timelist(:))
-  
+
   if (Time==Timelist(1)) then
      i1 = 1 ; i2 = 2
   else if (Time==Timelist(n)) then
@@ -663,7 +663,11 @@ character(len=*), intent(out), optional :: err_msg
 
 integer :: n, hr, mn, se, mtime
 type(time_type) :: T, Ts, Te, Td, Period, Time_mod
+#ifndef noFort2003
 character(len=:),allocatable :: terr, tserr, teerr
+#else
+character(len=128) :: terr, tserr, teerr
+#endif
 
   if ( .not. module_is_initialized ) call time_interp_init
 
@@ -691,7 +695,7 @@ character(len=:),allocatable :: terr, tserr, teerr
        ! month length must be equal
          if (days_in_month(Time_mod) /= days_in_month(Time)) then
             if(fms_error_handler ('time_interp_list','modulo months must have same length',err_msg)) return
-         endif 
+         endif
          Period = set_time(0,days_in_month(Time_mod))
      case (DAY)
          Period = set_time(0,1)
@@ -699,7 +703,7 @@ character(len=:),allocatable :: terr, tserr, teerr
          if(fms_error_handler ('time_interp_list','invalid value for argument modtime',err_msg)) return
   end select
 
-! If modulo time is in effect and Timelist spans a time interval exactly equal to 
+! If modulo time is in effect and Timelist spans a time interval exactly equal to
 ! the modulo period, then the endpoints of Timelist specify the same point in the cycle.
 ! This ambiguity is resolved by ignoring the last time level.
   if (mtime /= NONE .and. Timelist(size(Timelist))-Timelist(1) == Period) then
@@ -736,7 +740,9 @@ character(len=:),allocatable :: terr, tserr, teerr
            'time '//trim(terr)//' ('//date_to_string(T)//' is before range of list '//trim(tserr)//'-'//trim(teerr)//&
            '('//date_to_string(Ts)//' - '//date_to_string(Te)//')',&
            err_msg)) return
+#ifndef noFort2003
         deallocate(terr,tserr,teerr)
+#endif
      endif
      Td = Te-Ts
      weight = 1. - ((Ts-T) // (Period-Td))
@@ -769,7 +775,9 @@ character(len=:),allocatable :: terr, tserr, teerr
            'time '//trim(terr)//' ('//date_to_string(T)//' is after range of list '//trim(tserr)//'-'//trim(teerr)//&
            '('//date_to_string(Ts)//' - '//date_to_string(Te)//')',&
            err_msg)) return
+#ifndef noFort2003
         deallocate(terr,tserr,teerr)
+#endif
      endif
      Td = Te-Ts
      weight = (T-Te) // (Period-Td)
@@ -793,7 +801,7 @@ end subroutine time_interp_list
    year_end = set_date(year+1, 1, 1)
 
    year_midpt = (year_beg + year_end) / 2
-   
+
  end function year_midpt
 
 !#######################################################################
@@ -814,7 +822,7 @@ end subroutine time_interp_list
    endif
 
    month_midpt = (month_beg + month_end) / 2
-   
+
  end function month_midpt
 
 !#######################################################################
@@ -1128,7 +1136,7 @@ end module time_interp_mod
    call time_interp(Time(1), Time_beg, Time_end, Timelist, weight, index1, index2, correct_leap_year_inconsistency=.true.)
    write(outunit,89) 'time_interp_modulo: ', index1,index2,weight
    write(outunit,'()')
- enddo 
+ enddo
 
  99 format(' index1=',i3,'  index2=',i3,'  weight=',f18.15)
  89 format(a20,' index1=',i3,'  index2=',i3,'  weight=',f18.15)

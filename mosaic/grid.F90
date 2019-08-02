@@ -212,6 +212,7 @@ subroutine get_grid_cell_area_SG(component, tile, cellarea, domain)
   ! local vars
   integer :: nlon, nlat
   real, allocatable :: glonb(:,:), glatb(:,:)
+  real, allocatable :: glon(:,:), glat(:,:)
 
   select case(get_grid_version())
   case(VERSION_0,VERSION_1)
@@ -236,7 +237,9 @@ subroutine get_grid_cell_area_SG(component, tile, cellarea, domain)
         call get_grid_size(component,tile,nlon,nlat)
      endif
      allocate(glonb(nlon+1,nlat+1),glatb(nlon+1,nlat+1))
+     allocate(glon(nlon,nlat),glat(nlon,nlat))
      call get_grid_cell_vertices(component, tile, glonb, glatb, domain)
+     call get_grid_cell_centers(component, tile, glon, glat, domain)
      if (great_circle_algorithm) then
         call calc_mosaic_grid_great_circle_area(glonb*pi/180.0, glatb*pi/180.0, cellarea)
      else

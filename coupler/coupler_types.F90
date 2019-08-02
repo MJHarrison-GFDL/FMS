@@ -48,7 +48,7 @@ module coupler_types_mod
   public coupler_type_copy_data, coupler_type_redistribute_data
   public coupler_type_destructor, coupler_type_initialized
   public coupler_type_extract_data, coupler_type_set_data
-
+  public surface_mass_balance_type
   public coupler_type_copy_1d_2d
   public coupler_type_copy_1d_3d
 
@@ -181,6 +181,26 @@ module coupler_types_mod
     logical    :: set = .false.       !< If true, this type has been initialized
   end type coupler_1d_bc_type
 
+
+  type surface_mass_balance_type
+     real, dimension(:,:),   pointer :: smb              =>NULL() ! surface mass balance array (kg m-2 s-1)
+     real, dimension(:,:),   pointer :: smb_in              =>NULL() ! surface mass balance array (kg m-2 s-1)
+     real, dimension(:,:),   pointer :: smb_out              =>NULL() ! surface mass balance array (kg m-2 s-1)
+     real, dimension(:,:),   pointer :: mask              =>NULL()
+     real                            :: lat_south
+     real                            :: lat_north
+     real                            :: ts_win
+     logical                         :: read_pmt
+     real                            :: smb_target
+     integer                         :: id_target
+     real, dimension(:), pointer     :: smb_hist=>NULL()
+     real                            :: total
+     real                            :: total_in
+     real                            :: total_out
+     real                            :: scale_factor
+     type(restart_file_type), pointer:: restart_file
+     real                            :: sum_mask
+  end type surface_mass_balance_type
 
   ! The following public parameters can help in selecting the sub-elements of a
   ! coupler type.  There are duplicate values because different boundary
@@ -1879,7 +1899,7 @@ contains
 
       do m = 1, var_in%bc(n)%num_fields
         if (present(field_index)) then
-          if (m /= field_index) cycle 
+          if (m /= field_index) cycle
         endif
         if ( associated(var%bc(n)%field(m)%values) ) then
           do j=var%jsc-halo,var%jec+halo
